@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 15
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "api.py"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production",
+    "PYTHON_VERSION": "3.9"
+  }
+}
