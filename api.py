@@ -12,7 +12,7 @@ VALID_KEY = "@x_TRACEOWNER"
 ORIGINAL_API_URL = "http://uersxinfo.in/api"
 ORIGINAL_KEY = "jsjdne"
 
-# 🔥 API Expiry Date
+# 🔥 API Expiry Date (Apni marzi se change kar)
 API_EXPIRY = "2026-12-31"
 
 def is_expired():
@@ -32,17 +32,20 @@ def home():
         "expires_on": API_EXPIRY,
         "status": "Active" if not is_expired() else "Expired",
         "endpoints": {
-            "info": "/api?key=YOUR_KEY&type=uers&term=TG_ID"
+            "info": "/api?key=YOUR_KEY&type=uers&term=TG_ID_OR_USERNAME",
+            "test": "/test-original?term=TG_ID_OR_USERNAME"
         },
         "example": "/api?key=@x_TRACEOWNER&type=uers&term=8328548512"
     })
 
+# ==================== MAIN API ====================
 @app.route('/api')
 def tg_info():
+    # 🔥 Check if API is expired
     if is_expired():
         return jsonify({
             "status": False,
-            "error": f"API expired on {API_EXPIRY}!",
+            "error": f"API expired on {API_EXPIRY}! Please contact support.",
             "developer": "@x_TRACEOWNER",
             "credit": "@x_TRACEOWNER",
             "expires_on": API_EXPIRY
@@ -52,6 +55,7 @@ def tg_info():
     term = request.args.get('term')
     query_type = request.args.get('type', 'uers')
     
+    # 🔐 Key verify
     if not key:
         return jsonify({"status": False, "error": "Missing API Key!", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 400
         
@@ -106,6 +110,52 @@ def tg_info():
     except Exception:
         return jsonify({"status": False, "message": "No data found", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 404
 
+# ==================== TEST ENDPOINT ====================
+@app.route('/test-original')
+def test_original():
+    """
+    Ye endpoint original API ko direct call karta hai.
+    Isse pata chalega ki:
+    - Original API response de rahi hai ya nahi
+    - Status code kya hai
+    - Headers kya hain
+    """
+    term = request.args.get('term', '@Thakur_bolti_public')
+    
+    try:
+        response = requests.get(ORIGINAL_API_URL, params={
+            'key': ORIGINAL_KEY,
+            'type': 'uers',
+            'term': term
+        }, timeout=10)
+        
+        return jsonify({
+            "status": "success",
+            "status_code": response.status_code,
+            "headers": dict(response.headers),
+            "raw_response": response.text,
+            "json_response": response.json() if response.text else None
+        })
+        
+    except requests.exceptions.Timeout:
+        return jsonify({
+            "status": "timeout",
+            "error": "Original API 10 sec mein response nahi di"
+        }), 504
+        
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            "status": "connection_error",
+            "error": "Original API se connect nahi ho paya"
+        }), 503
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
+
+# ==================== ERROR HANDLERS ====================
 @app.route('/api/<path:path>')
 def catch_all(path):
     return jsonify({"status": False, "message": "No data found", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 404
