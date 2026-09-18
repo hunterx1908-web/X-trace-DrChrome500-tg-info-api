@@ -12,11 +12,8 @@ VALID_KEY = "@x_TRACEOWNER"
 ORIGINAL_API_URL = "http://uersxinfo.in/api"
 ORIGINAL_KEY = "jsjdne"
 
-# 🔥 API Expiry Date (Apni marzi se set kar)
+# 🔥 API Expiry Date
 API_EXPIRY = "2026-12-31"
-
-# 🔥 DEBUG MODE - True karne par raw response dikhega
-DEBUG = True  # <-- Isko True rakho test ke liye, baad mein False karo
 
 def is_expired():
     try:
@@ -34,7 +31,6 @@ def home():
         "credit": "@x_TRACEOWNER",
         "expires_on": API_EXPIRY,
         "status": "Active" if not is_expired() else "Expired",
-        "debug_mode": DEBUG,
         "endpoints": {
             "info": "/api?key=YOUR_KEY&type=uers&term=TG_ID"
         },
@@ -43,11 +39,10 @@ def home():
 
 @app.route('/api')
 def tg_info():
-    # 🔥 Check if API is expired
     if is_expired():
         return jsonify({
             "status": False,
-            "error": f"API expired on {API_EXPIRY}! Please contact support.",
+            "error": f"API expired on {API_EXPIRY}!",
             "developer": "@x_TRACEOWNER",
             "credit": "@x_TRACEOWNER",
             "expires_on": API_EXPIRY
@@ -57,7 +52,6 @@ def tg_info():
     term = request.args.get('term')
     query_type = request.args.get('type', 'uers')
     
-    # 🔐 Key verify
     if not key:
         return jsonify({"status": False, "error": "Missing API Key!", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 400
         
@@ -74,15 +68,7 @@ def tg_info():
         response.raise_for_status()
         data = response.json()
         
-        # 🔥 DEBUG: Agar debug mode on hai toh raw response dikhao
-        if DEBUG:
-            return jsonify({
-                "debug": True,
-                "original_response": data,
-                "note": "Debug mode is ON. Turn DEBUG=False in code."
-            }), 200
-        
-        # 🔥 Clean response (only when debug is off)
+        # 🔥 Clean response
         if isinstance(data, dict):
             # Remove unwanted fields
             data.pop('developer', None)
@@ -90,19 +76,21 @@ def tg_info():
             data.pop('status_code', None)
             data.pop('http_status', None)
             
-            # Check if data exists
-            if not data.get('number') or data.get('number') == "":
+            # 🔥 FIX: Check if success hai aur number hai
+            if data.get('success') == True and data.get('number'):
+                # Data mil gaya — clean response
+                data['developer'] = '@x_TRACEOWNER'
+                data['credit'] = '@x_TRACEOWNER'
+                data['api_expires_on'] = API_EXPIRY
+                return jsonify(data)
+            else:
+                # Data nahi mila
                 return jsonify({
                     "status": False,
                     "message": "Phone number not found",
                     "developer": "@x_TRACEOWNER",
                     "credit": "@x_TRACEOWNER"
                 }), 404
-            
-            # Add our branding
-            data['developer'] = '@x_TRACEOWNER'
-            data['credit'] = '@x_TRACEOWNER'
-            data['api_expires_on'] = API_EXPIRY
             
         return jsonify(data)
         
