@@ -3,11 +3,7 @@ name = "tg-info-api"
 version = "1.0.0"
 description = "TG Info API"
 requires-python = ">=3.9"
-dependencies = [
-    "Flask==2.3.3",
-    "requests==2.31.0",
-    "gunicorn==21.2.0"
-]
+dependencies = ["Flask==2.3.3", "requests==2.31.0", "gunicorn==21.2.0"]
 
 [tool.vercel]
 entrypoint = "api:app"
