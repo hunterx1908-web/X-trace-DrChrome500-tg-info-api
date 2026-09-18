@@ -12,7 +12,14 @@ VALID_KEY = "@x_TRACEOWNER"
 ORIGINAL_API_URL = "http://uersxinfo.in/api"
 ORIGINAL_KEY = "jsjdne"
 
-# 🔥 API Expiry Date (Apni marzi se change kar)
+# 🔥 Free Proxy URLs (multiple fallback)
+PROXY_URLS = [
+    "https://api.allorigins.win/raw?url=",
+    "https://corsproxy.io/?",
+    "https://api.codetabs.com/v1/proxy?quest=",
+]
+
+# 🔥 API Expiry Date
 API_EXPIRY = "2026-12-31"
 
 def is_expired():
@@ -41,11 +48,10 @@ def home():
 # ==================== MAIN API ====================
 @app.route('/api')
 def tg_info():
-    # 🔥 Check if API is expired
     if is_expired():
         return jsonify({
             "status": False,
-            "error": f"API expired on {API_EXPIRY}! Please contact support.",
+            "error": f"API expired on {API_EXPIRY}!",
             "developer": "@x_TRACEOWNER",
             "credit": "@x_TRACEOWNER",
             "expires_on": API_EXPIRY
@@ -55,7 +61,6 @@ def tg_info():
     term = request.args.get('term')
     query_type = request.args.get('type', 'uers')
     
-    # 🔐 Key verify
     if not key:
         return jsonify({"status": False, "error": "Missing API Key!", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 400
         
@@ -65,95 +70,96 @@ def tg_info():
     if not term:
         return jsonify({"status": False, "error": "Missing 'term' parameter!", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 400
     
-    params = {'key': ORIGINAL_KEY, 'type': query_type, 'term': term}
+    # 🔥 Original API URL with parameters
+    original_url = f"{ORIGINAL_API_URL}?key={ORIGINAL_KEY}&type={query_type}&term={term}"
     
+    data = None
+    last_error = None
+    
+    # 🔥 Try direct first
     try:
-        response = requests.get(ORIGINAL_API_URL, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+        response = requests.get(original_url, timeout=10)
+        if response.status_code == 200 and response.text:
+            data = response.json()
+    except:
+        pass
+    
+    # 🔥 If direct fails, try proxies
+    if not data:
+        for proxy in PROXY_URLS:
+            try:
+                proxy_url = proxy + original_url if '?' in proxy else proxy + original_url
+                response = requests.get(proxy_url, timeout=15)
+                if response.status_code == 200 and response.text:
+                    data = response.json()
+                    if data:
+                        break
+            except:
+                continue
+    
+    # 🔥 If still no data
+    if not data:
+        return jsonify({
+            "status": False,
+            "message": "Request timeout. Please try again later.",
+            "developer": "@x_TRACEOWNER",
+            "credit": "@x_TRACEOWNER"
+        }), 504
+    
+    # 🔥 Clean response
+    if isinstance(data, dict):
+        data.pop('developer', None)
+        data.pop('key_details', None)
+        data.pop('status_code', None)
+        data.pop('http_status', None)
         
-        # 🔥 Clean response
-        if isinstance(data, dict):
-            # Remove unwanted fields
-            data.pop('developer', None)
-            data.pop('key_details', None)
-            data.pop('status_code', None)
-            data.pop('http_status', None)
-            
-            # 🔥 FIX: Check if success hai aur number hai
-            if data.get('success') == True and data.get('number'):
-                # Data mil gaya — clean response
-                data['developer'] = '@x_TRACEOWNER'
-                data['credit'] = '@x_TRACEOWNER'
-                data['api_expires_on'] = API_EXPIRY
-                return jsonify(data)
-            else:
-                # Data nahi mila
-                return jsonify({
-                    "status": False,
-                    "message": "Phone number not found",
-                    "developer": "@x_TRACEOWNER",
-                    "credit": "@x_TRACEOWNER"
-                }), 404
-            
-        return jsonify(data)
-        
-    except requests.exceptions.Timeout:
-        return jsonify({"status": False, "message": "Request timeout. Please try again later.", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 504
-        
-    except requests.exceptions.ConnectionError:
-        return jsonify({"status": False, "message": "No data found", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 404
-        
-    except requests.exceptions.RequestException:
-        return jsonify({"status": False, "message": "No data found", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 404
-        
-    except Exception:
-        return jsonify({"status": False, "message": "No data found", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 404
+        if data.get('success') == True and data.get('number'):
+            data['developer'] = '@x_TRACEOWNER'
+            data['credit'] = '@x_TRACEOWNER'
+            data['api_expires_on'] = API_EXPIRY
+            return jsonify(data)
+        else:
+            return jsonify({
+                "status": False,
+                "message": "Phone number not found",
+                "developer": "@x_TRACEOWNER",
+                "credit": "@x_TRACEOWNER"
+            }), 404
+    
+    return jsonify(data)
 
 # ==================== TEST ENDPOINT ====================
 @app.route('/test-original')
 def test_original():
-    """
-    Ye endpoint original API ko direct call karta hai.
-    Isse pata chalega ki:
-    - Original API response de rahi hai ya nahi
-    - Status code kya hai
-    - Headers kya hain
-    """
     term = request.args.get('term', '@Thakur_bolti_public')
+    original_url = f"{ORIGINAL_API_URL}?key={ORIGINAL_KEY}&type=uers&term={term}"
     
+    results = {}
+    
+    # Test direct
     try:
-        response = requests.get(ORIGINAL_API_URL, params={
-            'key': ORIGINAL_KEY,
-            'type': 'uers',
-            'term': term
-        }, timeout=10)
-        
-        return jsonify({
-            "status": "success",
-            "status_code": response.status_code,
-            "headers": dict(response.headers),
-            "raw_response": response.text,
-            "json_response": response.json() if response.text else None
-        })
-        
-    except requests.exceptions.Timeout:
-        return jsonify({
-            "status": "timeout",
-            "error": "Original API 10 sec mein response nahi di"
-        }), 504
-        
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            "status": "connection_error",
-            "error": "Original API se connect nahi ho paya"
-        }), 503
-        
+        r = requests.get(original_url, timeout=10)
+        results['direct'] = {
+            "status_code": r.status_code,
+            "response": r.text[:300]
+        }
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "error": str(e)
-        }), 500
+        results['direct'] = {"error": str(e)}
+    
+    # Test proxies
+    for i, proxy in enumerate(PROXY_URLS):
+        try:
+            proxy_url = proxy + original_url
+            r = requests.get(proxy_url, timeout=15)
+            results[f'proxy_{i+1}'] = {
+                "proxy": proxy,
+                "status_code": r.status_code,
+                "response": r.text[:300]
+            }
+        except Exception as e:
+            results[f'proxy_{i+1}'] = {"proxy": proxy, "error": str(e)}
+    
+    return jsonify(results)
 
 # ==================== ERROR HANDLERS ====================
 @app.route('/api/<path:path>')
