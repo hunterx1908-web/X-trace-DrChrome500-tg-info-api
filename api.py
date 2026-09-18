@@ -15,6 +15,9 @@ ORIGINAL_KEY = "jsjdne"
 # 🔥 API Expiry Date (Apni marzi se set kar)
 API_EXPIRY = "2026-12-31"
 
+# 🔥 DEBUG MODE - True karne par raw response dikhega
+DEBUG = True  # <-- Isko True rakho test ke liye, baad mein False karo
+
 def is_expired():
     try:
         expiry = datetime.strptime(API_EXPIRY, "%Y-%m-%d")
@@ -31,6 +34,7 @@ def home():
         "credit": "@x_TRACEOWNER",
         "expires_on": API_EXPIRY,
         "status": "Active" if not is_expired() else "Expired",
+        "debug_mode": DEBUG,
         "endpoints": {
             "info": "/api?key=YOUR_KEY&type=uers&term=TG_ID"
         },
@@ -63,7 +67,6 @@ def tg_info():
     if not term:
         return jsonify({"status": False, "error": "Missing 'term' parameter!", "developer": "@x_TRACEOWNER", "credit": "@x_TRACEOWNER"}), 400
     
-    # Forward to original API
     params = {'key': ORIGINAL_KEY, 'type': query_type, 'term': term}
     
     try:
@@ -71,7 +74,15 @@ def tg_info():
         response.raise_for_status()
         data = response.json()
         
-        # 🔥 Clean response
+        # 🔥 DEBUG: Agar debug mode on hai toh raw response dikhao
+        if DEBUG:
+            return jsonify({
+                "debug": True,
+                "original_response": data,
+                "note": "Debug mode is ON. Turn DEBUG=False in code."
+            }), 200
+        
+        # 🔥 Clean response (only when debug is off)
         if isinstance(data, dict):
             # Remove unwanted fields
             data.pop('developer', None)
