@@ -74,6 +74,10 @@ def tg_info():
         response.raise_for_status()
         data = response.json()
         
+        # 🔥 Expiry date add kar
+        if isinstance(data, dict):
+            data['api_expires_on'] = API_EXPIRY
+        
         return jsonify(data)
         
     except requests.exceptions.Timeout:
